@@ -211,8 +211,17 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
         //data prepare
 		String amount = instruction.getAmount();
+		//check whether amount is a number
+		if(!(amount != null && amount.chars().allMatch(Character::isDigit))){
+			System.out.println("Please enter a number in amount!");
+			return;
+		}
 		float amount2num= Float.parseFloat(amount);
 		String frequency = instruction.getFrequency();
+		if(!(frequency.equals("MTH")||frequency.equals("FTH"))){
+			System.out.println("Please enter correct frequency:MTH/FTH");
+			return;
+		}
 
 
 		Date date = new Date(System.currentTimeMillis());
@@ -261,7 +270,11 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			PreparedStatement pstmt2 = openConnection().prepareStatement(sql2);
 			pstmt2.setString(1, fullName);
 			ResultSet rs2  = pstmt2.executeQuery();
-			rs2.next();
+			boolean check =rs2.next();
+			if(check == false){
+				System.out.println("Please enter fullname in the correct format, such as:Carie Bowtel");
+				return;
+			}
 			String customer = rs2.getString("login");
 
 
@@ -269,7 +282,11 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			PreparedStatement pstmt3 = openConnection().prepareStatement(sql3);
 			pstmt3.setString(1, etfName);
 			ResultSet rs3  = pstmt3.executeQuery();
-			rs3.next();
+			check =rs3.next();
+			if(check == false){
+				System.out.println("Please enter etfName in the correct format, such as:Global Banks");
+				return;
+			}
 			String code = rs3.getString("code");
 
 
@@ -390,4 +407,5 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 //
 //
 	}
+
 }
