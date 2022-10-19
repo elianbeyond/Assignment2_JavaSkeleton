@@ -1,13 +1,16 @@
 package Data;
 
 import java.sql.*;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Vector;
 
 import org.postgresql.ds.PGSimpleDataSource;
-import org.postgresql.util.PSQLException;
-
 import Business.Instruction;
 import Presentation.IRepositoryProvider;
+
+
+
 
 /**
  * Encapsulates create/read/update/delete operations to PostgreSQL database
@@ -15,20 +18,38 @@ import Presentation.IRepositoryProvider;
  */
 public class PostgresRepositoryProvider implements IRepositoryProvider {
 	//DB connection parameters - ENTER YOUR LOGIN AND PASSWORD HERE
-    private final String userid = "y22s2c9120_bcao7645";
-    private final String passwd = "cao520159357";
-    private final String myHost = "soit-db-pro-2.ucc.usyd.edu.au";
+//	private final String userid = "y22s2c9120_bcao7645";
+//	private final String passwd = "cao520159357";
+//	private final String myHost = "soit-db-pro-2.ucc.usyd.edu.au";
+//
+//	private Connection openConnection() throws SQLException
+//	{
+//		PGSimpleDataSource source = new PGSimpleDataSource();
+//		source.setServerName(myHost);
+//		source.setDatabaseName(userid);
+//		source.setUser(userid);
+//		source.setPassword(passwd);
+//		Connection conn = source.getConnection();
+//
+//		return conn;
+//	}
+
+	private final String userid = "postgres";
+	private final String passwd = "cao520159357";
+	private final String myHost = "localhost";
+
+	public static String globalAdmName;
 
 	private Connection openConnection() throws SQLException
 	{
 		PGSimpleDataSource source = new PGSimpleDataSource();
 		source.setServerName(myHost);
-		source.setDatabaseName(userid);
+		source.setDatabaseName("ass2");
 		source.setUser(userid);
 		source.setPassword(passwd);
 		Connection conn = source.getConnection();
-	    
-	    return conn;
+
+		return conn;
 	}
 
 	/**
@@ -51,8 +72,11 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 				String firstname = rs.getString("firstname");
 				if(firstname!= null){
 					System.out.println("Login succeeded，firstname="+firstname);
+					globalAdmName = userName;
 				}
+
 				return  firstname;
+
 			}
 
 
@@ -103,6 +127,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 
 
+
 			while(rs.next()){
 				Instruction instruction = new Instruction();
 				instruction.setAmount(rs.getString("amount"));
@@ -116,21 +141,11 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 				instruction.setEtf(rs.getString("name")) ;
 				vector.add(instruction);
 			}
-
-
+			System.out.println("function (findInstructionsByAdm) executed successfully.");
 
 		} catch (SQLException e) {
 			throw new RuntimeException(e);
 		}
-
-
-
-
-
-
-
-
-
 
 		return  vector;
 	}
@@ -142,9 +157,50 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 	 */
 	@Override
 	public Vector<Instruction> findInstructionsByCriteria(String searchString) {
+		Vector <Instruction> vector =new Vector<>();
+		String sql = "select  instructionid,amount,frequency,expirydate,customer,administrator,t.code,t.fullname,t.name,investinstruction.notes\n" +
+				"from investinstruction,\n" +
+				"   (select    concat_ws(' ',firstname,lastname) fullname, login , etf.code, etf.name , investinstruction.notes\n" +
+				"    from investinstruction,customer,etf\n" +
+				"    where investinstruction.customer = customer.login and etf.code = investinstruction.code )  t\n" +
+				"                where investinstruction.customer =  t.login\n" +
+				"                      and investinstruction.code = t.code\n" +
+				"                      and (t.fullname ilike ? or t.login ilike ? or t.name ilike ? or t.notes ilike ?);\n";
 
-		return new Vector<Instruction>();
+		try {
+			PreparedStatement pstmt = openConnection().prepareStatement(sql);
+			pstmt.setString(1, "%"+searchString+"%");
+			pstmt.setString(2, "%"+searchString+"%");
+			pstmt.setString(3, "%"+searchString+"%");
+			pstmt.setString(4, "%"+searchString+"%");
+
+			ResultSet rs  = pstmt.executeQuery();
+
+			while(rs.next()){
+				Instruction instruction = new Instruction();
+				instruction.setAmount(rs.getString("amount"));
+				instruction.setFrequency(rs.getString("frequency"));
+				instruction.setExpiryDate(rs.getString("expirydate"));
+				instruction.setCustomer(rs.getString("fullname"));
+				instruction.setEtf(rs.getString("name"));
+				instruction.setAdministrator(rs.getString("administrator"));
+				instruction.setNotes(rs.getString("notes"));
+				vector.add(instruction);
+			}
+			System.out.println("function (findInstructionsByCriteria) executed successfully.");
+
+
+			rs.close();
+			pstmt.close();
+
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+
+		return vector;
 	}
+
+
 
 	/**
 	 * Add a new instruction into the Database
@@ -153,6 +209,90 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 	@Override
 	public void addInstruction(Instruction instruction) {
 
+        //data prepare
+		String amount = instruction.getAmount();
+		float amount2num= Float.parseFloat(amount);
+		String frequency = instruction.getFrequency();
+
+
+		Date date = new Date(System.currentTimeMillis());
+		Calendar c = Calendar.getInstance();
+		c.setTime(date);
+		c.add(Calendar.MONTH, 12);
+		//Get the current time and add 12 months
+		Date expirydate = new Date(c.getTimeInMillis());
+		SimpleDateFormat sdf = new SimpleDateFormat("dd/mm/yyyy");
+
+
+
+
+
+		String fullName = instruction.getCustomer();
+		String administrator = instruction.getAdministrator();
+		String etfName = instruction.getEtf();
+		String notes = instruction.getNotes();
+
+        //find the insert index
+		String sql1 = "select count(*) from investinstruction";
+
+		//full name ->customer.login -> investinstruction.customer
+		String sql2 = "select login from\n" +
+				"(select distinct  login,fullname from (select concat_ws(' ',firstname,lastname) fullname, login from customer) t,investinstruction where t.login = investinstruction.customer) t2\n" +
+				"where fullname = ?";
+
+		//etf.name ->etf.code
+		String sql3 = "select code from etf where name = ?";
+
+		//insert data
+		String sql4 = "INSERT INTO investinstruction (instructionid, amount, frequency, expirydate, customer,administrator,code,notes) \n" +
+				"VALUES (?,?,?,?,?,?,?,?)";
+
+		try {
+			//get investinstruction.investinstructionid
+			PreparedStatement pstmt1 = openConnection().prepareStatement(sql1);
+
+			ResultSet rs1  = pstmt1.executeQuery();
+			rs1.next();
+			int count = rs1.getInt(1);
+			int instructionid = count+1;
+
+
+            //find investinstruction.customer
+			PreparedStatement pstmt2 = openConnection().prepareStatement(sql2);
+			pstmt2.setString(1, fullName);
+			ResultSet rs2  = pstmt2.executeQuery();
+			rs2.next();
+			String customer = rs2.getString("login");
+
+
+            //find investinstruction.code
+			PreparedStatement pstmt3 = openConnection().prepareStatement(sql3);
+			pstmt3.setString(1, etfName);
+			ResultSet rs3  = pstmt3.executeQuery();
+			rs3.next();
+			String code = rs3.getString("code");
+
+
+
+
+            //insert a row of data into table investinstruction
+			PreparedStatement pstmt4 = openConnection().prepareStatement(sql4);
+			pstmt4.setInt(1,instructionid );
+			pstmt4.setFloat(2, amount2num);
+			pstmt4.setString(3, frequency);
+			pstmt4.setDate(4, expirydate);
+			pstmt4.setString(5, customer);
+			pstmt4.setString(6, globalAdmName);
+			pstmt4.setString(7, code );
+			pstmt4.setString(8, notes );
+			pstmt4.executeUpdate();
+
+
+			System.out.println("add successfully, instructionid of new data is :" +instructionid);
+
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
 
 
 	}
@@ -163,6 +303,10 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 	 */
 	@Override
 	public void updateInstruction(Instruction instruction) {
+
+
+		
+
 
 
 	}
