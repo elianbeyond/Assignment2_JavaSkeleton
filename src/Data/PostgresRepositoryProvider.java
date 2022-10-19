@@ -34,9 +34,9 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 //		return conn;
 //	}
 
-	private final String userid = "postgres";
-	private final String passwd = "cao520159357";
-	private final String myHost = "localhost";
+	static private  String userid = "postgres";
+	static private  String passwd = "cao520159357";
+	static private  String myHost = "localhost";
 
 	public static String globalAdmName;
 
@@ -304,90 +304,90 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 	@Override
 	public void updateInstruction(Instruction instruction) {
 
-		//data prepare
-		int instructionid = instruction.getInstructionId();
-		String amount = instruction.getAmount();
-		float amount2num= Float.parseFloat(amount);
-		String frequency = instruction.getFrequency();
-
-
-		Date date = new Date(System.currentTimeMillis());
-		Calendar c = Calendar.getInstance();
-		c.setTime(date);
-		c.add(Calendar.MONTH, 12);
-		//Get the current time and add 12 months
-		Date expirydate = new Date(c.getTimeInMillis());
-		SimpleDateFormat sdf = new SimpleDateFormat("dd/mm/yyyy");
-
-
-
-
-
-		String fullName = instruction.getCustomer();
-		String administrator = instruction.getAdministrator();
-		String etfName = instruction.getEtf();
-		String notes = instruction.getNotes();
-
-
-
-		//full name ->customer.login -> investinstruction.customer
-		String sql2 = "select login from\n" +
-				"(select distinct  login,fullname from (select concat_ws(' ',firstname,lastname) fullname, login from customer) t,investinstruction where t.login = investinstruction.customer) t2\n" +
-				"where fullname = ?";
-
-		//etf.name ->etf.code
-		String sql3 = "select code from etf where name = ?";
-
-		//insert data
-		String sql4 = "UPDATE investinstruction\n" +
-				"SET amount = ?, frequency = ?,expirydate=?,customer=?,administrator=?,code=?,notes=?\n" +
-				"WHERE instructionid = ?";
-
-		try {
-
-
-
-			//find investinstruction.customer
-			PreparedStatement pstmt2 = openConnection().prepareStatement(sql2);
-			pstmt2.setString(1, fullName);
-			ResultSet rs2  = pstmt2.executeQuery();
-			rs2.next();
-			String customer = rs2.getString("login");
-
-
-			//find investinstruction.code
-			PreparedStatement pstmt3 = openConnection().prepareStatement(sql3);
-			pstmt3.setString(1, etfName);
-			ResultSet rs3  = pstmt3.executeQuery();
-			rs3.next();
-			String code = rs3.getString("code");
-
-
-
-
-			//insert a row of data into table investinstruction
-			PreparedStatement pstmt4 = openConnection().prepareStatement(sql4);
-			pstmt4.setFloat(1, amount2num);
-			pstmt4.setString(2, frequency);
-			pstmt4.setDate(3, expirydate);
-			pstmt4.setString(4, customer);
-			pstmt4.setString(5, globalAdmName);
-			pstmt4.setString(6, code );
-			pstmt4.setString(7, notes );
-			pstmt4.setInt(8, instructionid );
-			pstmt4.executeUpdate();
-
-
-			System.out.println("update successfully, instructionid of changed data is :" +instructionid);
-
-		} catch (SQLException e) {
-			throw new RuntimeException(e);
-		}
-
-
-		
-
-
-
+//		//data prepare
+//		int instructionid = instruction.getInstructionId();
+//		String amount = instruction.getAmount();
+//		float amount2num= Float.parseFloat(amount);
+//		String frequency = instruction.getFrequency();
+//
+//
+//		Date date = new Date(System.currentTimeMillis());
+//		Calendar c = Calendar.getInstance();
+//		c.setTime(date);
+//		c.add(Calendar.MONTH, 12);
+//		//Get the current time and add 12 months
+//		Date expirydate = new Date(c.getTimeInMillis());
+//		SimpleDateFormat sdf = new SimpleDateFormat("dd/mm/yyyy");
+//
+//
+//
+//
+//
+//		String fullName = instruction.getCustomer();
+//		String administrator = instruction.getAdministrator();
+//		String etfName = instruction.getEtf();
+//		String notes = instruction.getNotes();
+//
+//
+//
+//		//full name ->customer.login -> investinstruction.customer
+//		String sql2 = "select login from\n" +
+//				"(select distinct  login,fullname from (select concat_ws(' ',firstname,lastname) fullname, login from customer) t,investinstruction where t.login = investinstruction.customer) t2\n" +
+//				"where fullname = ?";
+//
+//		//etf.name ->etf.code
+//		String sql3 = "select code from etf where name = ?";
+//
+//		//insert data
+//		String sql4 = "UPDATE investinstruction\n" +
+//				"SET amount = ?, frequency = ?,expirydate=?,customer=?,administrator=?,code=?,notes=?\n" +
+//				"WHERE instructionid = ?";
+//
+//		try {
+//
+//
+//
+//			//find investinstruction.customer
+//			PreparedStatement pstmt2 = openConnection().prepareStatement(sql2);
+//			pstmt2.setString(1, fullName);
+//			ResultSet rs2  = pstmt2.executeQuery();
+//			rs2.next();
+//			String customer = rs2.getString("login");
+//
+//
+//			//find investinstruction.code
+//			PreparedStatement pstmt3 = openConnection().prepareStatement(sql3);
+//			pstmt3.setString(1, etfName);
+//			ResultSet rs3  = pstmt3.executeQuery();
+//			rs3.next();
+//			String code = rs3.getString("code");
+//
+//
+//
+//
+//			//insert a row of data into table investinstruction
+//			PreparedStatement pstmt4 = openConnection().prepareStatement(sql4);
+//			pstmt4.setFloat(1, amount2num);
+//			pstmt4.setString(2, frequency);
+//			pstmt4.setDate(3, expirydate);
+//			pstmt4.setString(4, customer);
+//			pstmt4.setString(5, globalAdmName);
+//			pstmt4.setString(6, code );
+//			pstmt4.setString(7, notes );
+//			pstmt4.setInt(8, instructionid );
+//			pstmt4.executeUpdate();
+//
+//
+//			System.out.println("update successfully, instructionid of changed data is :" +instructionid);
+//
+//		} catch (SQLException e) {
+//			throw new RuntimeException(e);
+//		}
+//
+//
+//
+//
+//
+//
 	}
 }
