@@ -233,7 +233,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 		c.add(Calendar.MONTH, 12);
 		//Get the current time and add 12 months
 		Date expirydate = new Date(c.getTimeInMillis());
-		SimpleDateFormat sdf = new SimpleDateFormat("dd/mm/yyyy");
+		SimpleDateFormat sdf = new SimpleDateFormat("dd-mm-yyyy");
 
 
 
@@ -349,7 +349,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 
         //parse String expirydate to java.sql.Date date
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		SimpleDateFormat sdf = new SimpleDateFormat("dd-mm-yyyy");
 		java.util.Date d = null;
 		try {
 			d = sdf.parse(expirydate);
