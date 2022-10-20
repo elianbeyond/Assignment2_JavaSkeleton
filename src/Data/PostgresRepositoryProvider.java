@@ -361,22 +361,22 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 		float amount2num= Float.parseFloat(amount);
 		String frequency = instruction.getFrequency();
-
 		String expirydate = instruction.getExpiryDate();
 
 		//check date format
-
 
         //parse String expirydate to java.sql.Date date
 		SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
 		java.util.Date d = null;
 		try {
+			//Add strong judgment condition, otherwise 2022-02-29 will be wrongly judged as correct format
+			sdf.setLenient(false);
 			d = sdf.parse(expirydate);
 		} catch (Exception e) {
-			e.printStackTrace();
+			System.out.println("Please enter correct date format in dd-mm-yyyy");
+			return;
 		}
 		java.sql.Date date = new java.sql.Date(d.getTime());
-
 
 
 
@@ -406,13 +406,12 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 
 			//find investinstruction.customer
-			PreparedStatement pstmt1 = openConnection().prepareStatement(sql2);
+			PreparedStatement pstmt1 = openConnection().prepareStatement(sql1);
 			pstmt1.setString(1, fullName);
 			ResultSet rs1  = pstmt1.executeQuery();
-			rs1.next();
 			boolean check =rs1.next();
 			if(check == false){
-				System.out.println("Please enter fullname in the correct format, such as:Carie Bowtel");
+				System.out.println("Please enter fullname that existed in table customer, such as:Carie Bowtel");
 				return;
 			}
 			String customer = rs1.getString("login");
@@ -473,6 +472,9 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 		pattern = Pattern.compile(regx);
 		return pattern.matcher(str).matches();
 	}
+
+
+
 
 
 }
