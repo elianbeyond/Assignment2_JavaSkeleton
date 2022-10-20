@@ -116,7 +116,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 				"from customer,investinstruction where login = investinstruction.customer) t " +
 				"where investinstruction.administrator = (select login from administrator where firstname = '"+userName+"')  " +
 				"and investinstruction.code = etf.code and t.administrator = investinstruction.administrator " +
-				"and investinstruction.customer = t.login ORDER BY expiryDate ASC,t.firstname DESC,t.lastname DESC";
+				"and investinstruction.customer = t.login ORDER BY frequency,expiryDate ASC,t.firstname DESC,t.lastname DESC";
 
 
 
@@ -134,7 +134,26 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 				instruction.setInstructionId(rs.getInt("instructionid"));
 				instruction.setAmount(rs.getString("amount"));
 				instruction.setFrequency(rs.getString("frequency"));
-				instruction.setExpiryDate(rs.getString("expirydate"));
+				String expirydate = rs.getString("expirydate");
+
+				//The date format in the database is YMD, which is first parsed to Data and then converted to DMY format
+				SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+				SimpleDateFormat newsdf = new SimpleDateFormat("dd-MM-yyyy");
+				java.util.Date d = null;
+				try {
+					d = sdf.parse(expirydate);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				java.sql.Date date = new java.sql.Date(d.getTime());
+				String newDate = newsdf.format(date);
+
+				instruction.setExpiryDate(newDate);
+
+
+
+
+
 //				instruction.setCustomer(rs.getString("customer"));
 				String fullname = rs.getString("firstname")+" "+rs.getString("lastname");
 				instruction.setCustomer(fullname);
@@ -235,7 +254,6 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 		//Get the current time and add 12 months
 		Date expirydate = new Date(c.getTimeInMillis());
 		SimpleDateFormat sdf = new SimpleDateFormat("dd/mm/yyyy");
-
 
 
 
@@ -350,17 +368,13 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 
         //parse String expirydate to java.sql.Date date
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
 		java.util.Date d = null;
 		try {
 			d = sdf.parse(expirydate);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
-
-
-
 		java.sql.Date date = new java.sql.Date(d.getTime());
 
 
