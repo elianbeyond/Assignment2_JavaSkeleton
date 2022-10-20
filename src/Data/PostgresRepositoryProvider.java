@@ -109,7 +109,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 
 
-		String sql = "select DISTINCT amount,frequency,expiryDate,customer,t.firstname,t.lastname,investinstruction.administrator,name,notes " +
+		String sql = "select DISTINCT instructionid,amount,frequency,expiryDate,customer,t.firstname,t.lastname,investinstruction.administrator,name,notes " +
 				"from  investinstruction,etf, " +
 				"(select login,firstname,lastname,investinstruction.administrator " +
 				"from customer,investinstruction where login = investinstruction.customer) t " +
@@ -130,6 +130,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 			while(rs.next()){
 				Instruction instruction = new Instruction();
+				instruction.setInstructionId(rs.getInt("instructionid"));
 				instruction.setAmount(rs.getString("amount"));
 				instruction.setFrequency(rs.getString("frequency"));
 				instruction.setExpiryDate(rs.getString("expirydate"));
@@ -142,6 +143,8 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 				vector.add(instruction);
 			}
 			System.out.println("function (findInstructionsByAdm) executed successfully.");
+			rs.close();
+			stmt.close();
 
 		} catch (SQLException e) {
 			throw new RuntimeException(e);
@@ -264,6 +267,8 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			rs1.next();
 			int count = rs1.getInt(1);
 			int instructionid = count+1;
+			rs1.close();
+			pstmt1.close();
 
 
             //find investinstruction.customer
@@ -276,6 +281,8 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 				return;
 			}
 			String customer = rs2.getString("login");
+			rs2.close();
+			pstmt2.close();
 
 
             //find investinstruction.code
@@ -288,6 +295,8 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 				return;
 			}
 			String code = rs3.getString("code");
+			rs3.close();
+			pstmt3.close();
 
 
 
@@ -303,6 +312,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			pstmt4.setString(7, code );
 			pstmt4.setString(8, notes );
 			pstmt4.executeUpdate();
+			pstmt4.close();
 
 
 			System.out.println("add successfully, instructionid of new data is :" +instructionid);
@@ -320,92 +330,117 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 	 */
 	@Override
 	public void updateInstruction(Instruction instruction) {
+				//data prepare
+		int instructionid = instruction.getInstructionId();
+		String amount = instruction.getAmount();
 
-//		//data prepare
-//		int instructionid = instruction.getInstructionId();
-//		String amount = instruction.getAmount();
-//		float amount2num= Float.parseFloat(amount);
-//		String frequency = instruction.getFrequency();
-//
-//
-//		Date date = new Date(System.currentTimeMillis());
-//		Calendar c = Calendar.getInstance();
-//		c.setTime(date);
-//		c.add(Calendar.MONTH, 12);
-//		//Get the current time and add 12 months
-//		Date expirydate = new Date(c.getTimeInMillis());
-//		SimpleDateFormat sdf = new SimpleDateFormat("dd/mm/yyyy");
-//
-//
-//
-//
-//
-//		String fullName = instruction.getCustomer();
-//		String administrator = instruction.getAdministrator();
-//		String etfName = instruction.getEtf();
-//		String notes = instruction.getNotes();
-//
-//
-//
-//		//full name ->customer.login -> investinstruction.customer
-//		String sql2 = "select login from\n" +
-//				"(select distinct  login,fullname from (select concat_ws(' ',firstname,lastname) fullname, login from customer) t,investinstruction where t.login = investinstruction.customer) t2\n" +
-//				"where fullname = ?";
-//
-//		//etf.name ->etf.code
-//		String sql3 = "select code from etf where name = ?";
-//
-//		//insert data
-//		String sql4 = "UPDATE investinstruction\n" +
-//				"SET amount = ?, frequency = ?,expirydate=?,customer=?,administrator=?,code=?,notes=?\n" +
-//				"WHERE instructionid = ?";
-//
-//		try {
-//
-//
-//
-//			//find investinstruction.customer
-//			PreparedStatement pstmt2 = openConnection().prepareStatement(sql2);
-//			pstmt2.setString(1, fullName);
-//			ResultSet rs2  = pstmt2.executeQuery();
-//			rs2.next();
-//			String customer = rs2.getString("login");
-//
-//
-//			//find investinstruction.code
-//			PreparedStatement pstmt3 = openConnection().prepareStatement(sql3);
-//			pstmt3.setString(1, etfName);
-//			ResultSet rs3  = pstmt3.executeQuery();
-//			rs3.next();
-//			String code = rs3.getString("code");
-//
-//
-//
-//
-//			//insert a row of data into table investinstruction
-//			PreparedStatement pstmt4 = openConnection().prepareStatement(sql4);
-//			pstmt4.setFloat(1, amount2num);
-//			pstmt4.setString(2, frequency);
-//			pstmt4.setDate(3, expirydate);
-//			pstmt4.setString(4, customer);
-//			pstmt4.setString(5, globalAdmName);
-//			pstmt4.setString(6, code );
-//			pstmt4.setString(7, notes );
-//			pstmt4.setInt(8, instructionid );
-//			pstmt4.executeUpdate();
-//
-//
-//			System.out.println("update successfully, instructionid of changed data is :" +instructionid);
-//
-//		} catch (SQLException e) {
-//			throw new RuntimeException(e);
-//		}
-//
-//
-//
-//
-//
-//
+		//check whether amount is num
+		if(!(amount != null && amount.chars().allMatch(Character::isDigit))){
+			System.out.println("Please enter a number in amount!");
+			return;
+		}
+
+		float amount2num= Float.parseFloat(amount);
+		String frequency = instruction.getFrequency();
+
+		String expirydate = instruction.getExpiryDate();
+
+		//check date format
+
+
+        //parse String expirydate to java.sql.Date date
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		java.util.Date d = null;
+		try {
+			d = sdf.parse(expirydate);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+
+
+
+		java.sql.Date date = new java.sql.Date(d.getTime());
+
+
+
+
+
+		String fullName = instruction.getCustomer();
+		String administrator = instruction.getAdministrator();
+		String etfName = instruction.getEtf();
+		String notes = instruction.getNotes();
+
+
+
+		//full name ->customer.login -> investinstruction.customer
+		String sql1 = "select login from\n" +
+				"(select distinct  login,fullname from (select concat_ws(' ',firstname,lastname) fullname, login from customer) t,investinstruction where t.login = investinstruction.customer) t2\n" +
+				"where fullname = ?";
+
+		//etf.name ->etf.code
+		String sql2 = "select code from etf where name = ?";
+
+		//insert data
+		String sql3 = "UPDATE investinstruction\n" +
+				"SET amount = ?, frequency = ?,expirydate=?,customer=?,administrator=?,code=?,notes=?\n" +
+				"WHERE instructionid = ?";
+
+		try {
+
+
+
+			//find investinstruction.customer
+			PreparedStatement pstmt1 = openConnection().prepareStatement(sql2);
+			pstmt1.setString(1, fullName);
+			ResultSet rs1  = pstmt1.executeQuery();
+			rs1.next();
+			boolean check =rs1.next();
+			if(check == false){
+				System.out.println("Please enter fullname in the correct format, such as:Carie Bowtel");
+				return;
+			}
+			String customer = rs1.getString("login");
+			rs1.close();
+			pstmt1.close();
+
+
+			//find investinstruction.code
+			PreparedStatement pstmt2 = openConnection().prepareStatement(sql2);
+			pstmt2.setString(1, etfName);
+			ResultSet rs2  = pstmt2.executeQuery();
+			check = rs2.next();
+			if(check == false){
+				System.out.println("Please enter etfName in the correct format, such as:Global Banks");
+				return;
+			}
+			String code = rs2.getString("code");
+
+
+
+
+
+
+			//insert a row of data into table investinstruction
+			PreparedStatement pstmt3 = openConnection().prepareStatement(sql3);
+			pstmt3.setFloat(1, amount2num);
+			pstmt3.setString(2, frequency);
+			pstmt3.setDate(3, date);
+			pstmt3.setString(4, customer);
+			pstmt3.setString(5, globalAdmName);
+			pstmt3.setString(6, code );
+			pstmt3.setString(7, notes );
+			pstmt3.setInt(8, instructionid );
+			pstmt3.executeUpdate();
+			pstmt3.close();
+
+
+			System.out.println("update successfully, instructionid of changed data is :" +instructionid);
+
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+
 	}
 
 }
