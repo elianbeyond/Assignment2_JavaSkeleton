@@ -4,6 +4,7 @@ import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Vector;
+import java.util.regex.Pattern;
 
 import org.postgresql.ds.PGSimpleDataSource;
 import Business.Instruction;
@@ -215,7 +216,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
         //data prepare
 		String amount = instruction.getAmount();
 		//check whether amount is a number
-		if(!(amount != null && amount.chars().allMatch(Character::isDigit))){
+		if(!PostgresRepositoryProvider.isNumeric(amount)){
 			System.out.println("Please enter a number in amount!");
 			return;
 		}
@@ -335,7 +336,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 		String amount = instruction.getAmount();
 
 		//check whether amount is num
-		if(!(amount != null && amount.chars().allMatch(Character::isDigit))){
+		if(!PostgresRepositoryProvider.isNumeric(amount)){
 			System.out.println("Please enter a number in amount!");
 			return;
 		}
@@ -411,7 +412,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			ResultSet rs2  = pstmt2.executeQuery();
 			check = rs2.next();
 			if(check == false){
-				System.out.println("Please enter etfName in the correct format, such as:Global Banks");
+				System.out.println("Please enter etfName that already existed in table etf, such as:Global Banks");
 				return;
 			}
 			String code = rs2.getString("code");
@@ -442,5 +443,22 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 		}
 
 	}
+
+	//Use regular expression determines whether the data of String type represents Numeric
+	public static boolean isNumeric(String str) {
+		if (null == str || "".equals(str)) {
+			return false;
+		}
+		String regx = "[+-]*\\d+\\.?\\d*[Ee]*[+-]*\\d+";
+		Pattern pattern = Pattern.compile(regx);
+		boolean isNumber = pattern.matcher(str).matches();
+		if (isNumber) {
+			return isNumber;
+		}
+		regx = "^[-\\+]?[.\\d]*$";
+		pattern = Pattern.compile(regx);
+		return pattern.matcher(str).matches();
+	}
+
 
 }
