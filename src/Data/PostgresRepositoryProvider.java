@@ -19,39 +19,40 @@ import Presentation.IRepositoryProvider;
  */
 public class PostgresRepositoryProvider implements IRepositoryProvider {
 	//DB connection parameters - ENTER YOUR LOGIN AND PASSWORD HERE
-//	private final String userid = "y22s2c9120_bcao7645";
-//	private final String passwd = "cao520159357";
-//	private final String myHost = "soit-db-pro-2.ucc.usyd.edu.au";
-//
-//	private Connection openConnection() throws SQLException
-//	{
-//		PGSimpleDataSource source = new PGSimpleDataSource();
-//		source.setServerName(myHost);
-//		source.setDatabaseName(userid);
-//		source.setUser(userid);
-//		source.setPassword(passwd);
-//		Connection conn = source.getConnection();
-//
-//		return conn;
-//	}
-
-	static private  String userid = "postgres";
-	static private  String passwd = "cao520159357";
-	static private  String myHost = "localhost";
-
+	private final String userid = "y22s2c9120_bcao7645";
+	private final String passwd = "cao520159357";
+	private final String myHost = "soit-db-pro-2.ucc.usyd.edu.au";
 	public static String globalAdmName;
 
 	private Connection openConnection() throws SQLException
 	{
 		PGSimpleDataSource source = new PGSimpleDataSource();
 		source.setServerName(myHost);
-		source.setDatabaseName("ass2");
+		source.setDatabaseName(userid);
 		source.setUser(userid);
 		source.setPassword(passwd);
 		Connection conn = source.getConnection();
 
 		return conn;
 	}
+
+//	static private  String userid = "postgres";
+//	static private  String passwd = "cao520159357";
+//	static private  String myHost = "localhost";
+//
+//	public static String globalAdmName;
+//
+//	private Connection openConnection() throws SQLException
+//	{
+//		PGSimpleDataSource source = new PGSimpleDataSource();
+//		source.setServerName(myHost);
+//		source.setDatabaseName("ass2");
+//		source.setUser(userid);
+//		source.setPassword(passwd);
+//		Connection conn = source.getConnection();
+//
+//		return conn;
+//	}
 
 	/**
 	 * Validate administrator login request
@@ -165,6 +166,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			System.out.println("function (findInstructionsByAdm) executed successfully.");
 			rs.close();
 			stmt.close();
+			openConnection().close();
 
 		} catch (SQLException e) {
 			throw new RuntimeException(e);
@@ -290,6 +292,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			pstmt1.close();
 
 
+
             //find investinstruction.customer
 			PreparedStatement pstmt2 = openConnection().prepareStatement(sql2);
 			pstmt2.setString(1, fullName);
@@ -332,6 +335,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			pstmt4.setString(8, notes );
 			pstmt4.executeUpdate();
 			pstmt4.close();
+			openConnection().close();
 
 
 			System.out.println("add successfully, instructionid of new data is :" +instructionid);
@@ -447,6 +451,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			pstmt3.setInt(8, instructionid );
 			pstmt3.executeUpdate();
 			pstmt3.close();
+			openConnection().close();
 
 
 			System.out.println("update successfully, instructionid of changed data is :" +instructionid);
@@ -472,7 +477,6 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 		pattern = Pattern.compile(regx);
 		return pattern.matcher(str).matches();
 	}
-
 
 
 
