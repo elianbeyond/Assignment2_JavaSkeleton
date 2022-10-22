@@ -19,8 +19,8 @@ import Presentation.IRepositoryProvider;
  */
 public class PostgresRepositoryProvider implements IRepositoryProvider {
 	//DB connection parameters - ENTER YOUR LOGIN AND PASSWORD HERE
-	private final String userid = "y22s2c9120_bcao7645";
-	private final String passwd = "cao520159357";
+	private final String userid = "y22s2c9120_ryao8822";
+	private final String passwd = "201829";
 	private final String myHost = "soit-db-pro-2.ucc.usyd.edu.au";
 	public static String globalAdmName;
 
@@ -111,13 +111,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 
 
-		String sql = "select DISTINCT instructionid,amount,frequency,expiryDate,customer,t.firstname,t.lastname,investinstruction.administrator,name,notes " +
-				"from  investinstruction,etf, " +
-				"(select login,firstname,lastname,investinstruction.administrator " +
-				"from customer,investinstruction where login = investinstruction.customer) t " +
-				"where investinstruction.administrator = (select login from administrator where firstname = '"+userName+"')  " +
-				"and investinstruction.code = etf.code and t.administrator = investinstruction.administrator " +
-				"and investinstruction.customer = t.login ORDER BY frequency,expiryDate ASC,t.firstname DESC,t.lastname DESC";
+		String sql = "select *,(case when investinstruction.expirydate <= CURRENT_DATE then 1 else 0 end)as mark from customer join investinstruction ON (investinstruction.customer = customer.login) join Etf ON (etf.code = investinstruction.code) where investinstruction.administrator = '"+userName+"' order by mark ASC, investinstruction.expirydate ASC, customer.firstname DESC, customer.lastname DESC";
 
 
 
