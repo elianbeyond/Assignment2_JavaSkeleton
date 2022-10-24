@@ -13,8 +13,6 @@ import Presentation.IRepositoryProvider;
 
 
 
-
-
 /**
  * Encapsulates create/read/update/delete operations to PostgreSQL database
  * @author IwanB
@@ -295,38 +293,48 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			int len = tem.length();
 			tem = tem.substring(1,len-1);
 			String[]  strs=tem.split(",");
+			if(strs.length==2){
+				if(strs[0].isEmpty()){
+					System.out.println("Please enter the correct fullName");
+					return;
+				}
+				if(strs[1].isEmpty()){
+					System.out.println("Please enter the correct eftName");
+					return;
+				}
+			}else{
+				System.out.println("Please enter the correct fullName or etfName");
+				return;
+			}
 
-			System.out.println(strs[0]);
-			System.out.println(strs[1]);
-			if(strs[0].isEmpty()){
-				System.out.println("Please enter the correct fullName");
-				return;
-			}
-			if(strs[1].isEmpty()){
-				System.out.println("Please enter the correct eftName");
-				return;
-			}
+
+
 
 			cstmt.close();
 
 			String sql3 = "select add_instruction(?,?,?,?,?,?,?,?);";
 			CallableStatement cstmt2 = openConnection().prepareCall(sql3);
 
-			cstmt2.setInt(1,instructionid );
-			cstmt2.setFloat(2, amount2num);
-			cstmt2.setString(3, frequency);
-			cstmt2.setDate(4, expirydate);
-			cstmt2.setString(5, strs[0]);
-			cstmt2.setString(6, strs[1]);
-			cstmt2.setString(7, globalAdmName);
-			cstmt2.setString(8, notes );
-			cstmt2.execute();
-			cstmt2.close();
+			//strs[0]= customer ,strs[1] = code
+			if(strs.length==2) {
 
-			openConnection().close();
+				cstmt2.setInt(1, instructionid);
+				cstmt2.setFloat(2, amount2num);
+				cstmt2.setString(3, frequency);
+				cstmt2.setDate(4, expirydate);
+				cstmt2.setString(5, strs[0]);
+				cstmt2.setString(6, strs[1]);
+				cstmt2.setString(7, globalAdmName);
+				cstmt2.setString(8, notes);
+				cstmt2.execute();
+				cstmt2.close();
+
+				openConnection().close();
+				System.out.println("add successfully, instructionid of new data is :" +instructionid);
+			}
 
 
-			System.out.println("add successfully, instructionid of new data is :" +instructionid);
+
 
 		} catch (SQLException e) {
 			throw new RuntimeException(e);
@@ -392,15 +400,16 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			tem = tem.substring(1,len-1);
 			String[]  strs=tem.split(",");
 
-			System.out.println(strs[0]);
-			System.out.println(strs[1]);
-			if(strs[0].isEmpty()){
-				System.out.println("Please enter the correct fullName");
-				return;
-			}
-			if(strs[1].isEmpty()){
-				System.out.println("Please enter the correct eftName");
-				return;
+
+			if(strs.length==2){
+				if(strs[0].isEmpty()){
+					System.out.println("Please enter the correct fullName");
+					return;
+				}
+				if(strs[1].isEmpty()){
+					System.out.println("Please enter the correct eftName");
+					return;
+				}
 			}
 
 			cstmt.close();
