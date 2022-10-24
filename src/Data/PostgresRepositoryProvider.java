@@ -14,6 +14,7 @@ import Presentation.IRepositoryProvider;
 
 
 
+
 /**
  * Encapsulates create/read/update/delete operations to PostgreSQL database
  * @author IwanB
@@ -269,17 +270,8 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
         //find the insert index
 		String sql1 = "select count(*) from investinstruction";
 
-		//full name ->customer.login -> investinstruction.customer
-		String sql2 = "select login from\n" +
-				"(select distinct  login,fullname from (select concat_ws(' ',firstname,lastname) fullname, login from customer) t,investinstruction where t.login = investinstruction.customer) t2\n" +
-				"where fullname = ?";
 
-		//etf.name ->etf.code
-		String sql3 = "select code from etf where name = ?";
 
-		//insert data
-		String sql4 = "INSERT INTO investinstruction (instructionid, amount, frequency, expirydate, customer,administrator,code,notes) \n" +
-				"VALUES (?,?,?,?,?,?,?,?)";
 
 		try {
 			//get investinstruction.investinstructionid
@@ -292,50 +284,45 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			rs1.close();
 			pstmt1.close();
 
+			String sql2 = "select check_para(?,?);";
+			CallableStatement cstmt = openConnection().prepareCall(sql2);
+			cstmt.setString(1, fullName);
+			cstmt.setString(2, etfName);
 
+			ResultSet rs = cstmt.executeQuery();
+			rs.next();
+			String tem = rs.getString(1);
+			int len = tem.length();
+			tem = tem.substring(1,len-1);
+			String[]  strs=tem.split(",");
 
-            //find investinstruction.customer
-			PreparedStatement pstmt2 = openConnection().prepareStatement(sql2);
-			pstmt2.setString(1, fullName);
-			ResultSet rs2  = pstmt2.executeQuery();
-			boolean check =rs2.next();
-			if(check == false){
-				System.out.println("Please enter fullname in the correct format, such as:Carie Bowtel");
+			System.out.println(strs[0]);
+			System.out.println(strs[1]);
+			if(strs[0].isEmpty()){
+				System.out.println("Please enter the correct fullName");
 				return;
 			}
-			String customer = rs2.getString("login");
-			rs2.close();
-			pstmt2.close();
-
-
-            //find investinstruction.code
-			PreparedStatement pstmt3 = openConnection().prepareStatement(sql3);
-			pstmt3.setString(1, etfName);
-			ResultSet rs3  = pstmt3.executeQuery();
-			check =rs3.next();
-			if(check == false){
-				System.out.println("Please enter etfName in the correct format, such as:Global Banks");
+			if(strs[1].isEmpty()){
+				System.out.println("Please enter the correct eftName");
 				return;
 			}
-			String code = rs3.getString("code");
-			rs3.close();
-			pstmt3.close();
 
+			cstmt.close();
 
+			String sql3 = "select add_instruction(?,?,?,?,?,?,?,?);";
+			CallableStatement cstmt2 = openConnection().prepareCall(sql3);
 
+			cstmt2.setInt(1,instructionid );
+			cstmt2.setFloat(2, amount2num);
+			cstmt2.setString(3, frequency);
+			cstmt2.setDate(4, expirydate);
+			cstmt2.setString(5, strs[0]);
+			cstmt2.setString(6, strs[1]);
+			cstmt2.setString(7, globalAdmName);
+			cstmt2.setString(8, notes );
+			cstmt2.execute();
+			cstmt2.close();
 
-            //insert a row of data into table investinstruction
-			PreparedStatement pstmt4 = openConnection().prepareStatement(sql4);
-			pstmt4.setInt(1,instructionid );
-			pstmt4.setFloat(2, amount2num);
-			pstmt4.setString(3, frequency);
-			pstmt4.setDate(4, expirydate);
-			pstmt4.setString(5, customer);
-			pstmt4.setString(6, globalAdmName);
-			pstmt4.setString(7, code );
-			pstmt4.setString(8, notes );
-			pstmt4.executeUpdate();
-			pstmt4.close();
 			openConnection().close();
 
 
@@ -390,7 +377,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 		String notes = instruction.getNotes();
 
 
-		String sql1 = "select update_customer(?,?);";
+		String sql1 = "select check_para(?,?);";
 		try {
 			CallableStatement cstmt = openConnection().prepareCall(sql1);
 
@@ -401,14 +388,38 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			ResultSet rs = cstmt.executeQuery();
 			rs.next();
 			String tem = rs.getString(1);
+			int len = tem.length();
+			tem = tem.substring(1,len-1);
+			String[]  strs=tem.split(",");
 
-			System.out.println(tem);
-			if(tem.contains("null")){
-				System.out.println("Please enter the correct fullName or etfName");
+			System.out.println(strs[0]);
+			System.out.println(strs[1]);
+			if(strs[0].isEmpty()){
+				System.out.println("Please enter the correct fullName");
+				return;
+			}
+			if(strs[1].isEmpty()){
+				System.out.println("Please enter the correct eftName");
 				return;
 			}
 
 			cstmt.close();
+
+			String sql2 = "select update_instruction(?,?,?,?,?,?,?,?);";
+			CallableStatement cstmt2 = openConnection().prepareCall(sql2);
+			cstmt2.setString(1, strs[0]);
+			cstmt2.setString(2, strs[1]);
+			cstmt2.setFloat(3,amount2num);
+			cstmt2.setString(4,frequency);
+			cstmt2.setDate(5,date);
+			cstmt2.setString(6,globalAdmName);
+			cstmt2.setString(7,notes);
+			cstmt2.setInt(8,instructionid);
+			cstmt2.execute();
+			System.out.println("Update successfully");
+
+
+
 			openConnection().close();
 
 		} catch (SQLException e) {
