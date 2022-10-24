@@ -2,6 +2,7 @@ package Data;
 
 import java.sql.*;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Vector;
 import java.util.regex.Pattern;
@@ -19,40 +20,40 @@ import Presentation.IRepositoryProvider;
  */
 public class PostgresRepositoryProvider implements IRepositoryProvider {
 	//DB connection parameters - ENTER YOUR LOGIN AND PASSWORD HERE
-	private final String userid = "y22s2c9120_bcao7645";
-	private final String passwd = "cao520159357";
-	private final String myHost = "soit-db-pro-2.ucc.usyd.edu.au";
-	public static String globalAdmName;
-
-	private Connection openConnection() throws SQLException
-	{
-		PGSimpleDataSource source = new PGSimpleDataSource();
-		source.setServerName(myHost);
-		source.setDatabaseName(userid);
-		source.setUser(userid);
-		source.setPassword(passwd);
-		Connection conn = source.getConnection();
-
-		return conn;
-	}
-
-//	static private  String userid = "postgres";
-//	static private  String passwd = "cao520159357";
-//	static private  String myHost = "localhost";
-//
+//	private final String userid = "y22s2c9120_bcao7645";
+//	private final String passwd = "cao520159357";
+//	private final String myHost = "soit-db-pro-2.ucc.usyd.edu.au";
 //	public static String globalAdmName;
 //
 //	private Connection openConnection() throws SQLException
 //	{
 //		PGSimpleDataSource source = new PGSimpleDataSource();
 //		source.setServerName(myHost);
-//		source.setDatabaseName("ass2");
+//		source.setDatabaseName(userid);
 //		source.setUser(userid);
 //		source.setPassword(passwd);
 //		Connection conn = source.getConnection();
 //
 //		return conn;
 //	}
+
+	static private  String userid = "postgres";
+	static private  String passwd = "cao520159357";
+	static private  String myHost = "localhost";
+
+	public static String globalAdmName;
+
+	private Connection openConnection() throws SQLException
+	{
+		PGSimpleDataSource source = new PGSimpleDataSource();
+		source.setServerName(myHost);
+		source.setDatabaseName("ass2");
+		source.setUser(userid);
+		source.setPassword(passwd);
+		Connection conn = source.getConnection();
+
+		return conn;
+	}
 
 	/**
 	 * Validate administrator login request
@@ -353,23 +354,23 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 	 */
 	@Override
 	public void updateInstruction(Instruction instruction) {
-				//data prepare
+		//data prepare
 		int instructionid = instruction.getInstructionId();
 		String amount = instruction.getAmount();
 
 		//check whether amount is num
-		if(!PostgresRepositoryProvider.isNumeric(amount)){
+		if (!PostgresRepositoryProvider.isNumeric(amount)) {
 			System.out.println("Please enter a number in amount!");
 			return;
 		}
 
-		float amount2num= Float.parseFloat(amount);
+		float amount2num = Float.parseFloat(amount);
 		String frequency = instruction.getFrequency();
 		String expirydate = instruction.getExpiryDate();
 
 		//check date format
 
-        //parse String expirydate to java.sql.Date date
+		//parse String expirydate to java.sql.Date date
 		SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
 		java.util.Date d = null;
 		try {
@@ -383,82 +384,37 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 		java.sql.Date date = new java.sql.Date(d.getTime());
 
 
-
-
 		String fullName = instruction.getCustomer();
 		String administrator = instruction.getAdministrator();
 		String etfName = instruction.getEtf();
 		String notes = instruction.getNotes();
 
 
-
-		//full name ->customer.login -> investinstruction.customer
-		String sql1 = "select login from\n" +
-				"(select distinct  login,fullname from (select concat_ws(' ',firstname,lastname) fullname, login from customer) t,investinstruction where t.login = investinstruction.customer) t2\n" +
-				"where fullname = ?";
-
-		//etf.name ->etf.code
-		String sql2 = "select code from etf where name = ?";
-
-		//insert data
-		String sql3 = "UPDATE investinstruction\n" +
-				"SET amount = ?, frequency = ?,expirydate=?,customer=?,administrator=?,code=?,notes=?\n" +
-				"WHERE instructionid = ?";
-
+		String sql1 = "select update_customer(?,?);";
 		try {
+			CallableStatement cstmt = openConnection().prepareCall(sql1);
 
 
+			cstmt.setString(1, fullName);
+			cstmt.setString(2, etfName);
 
-			//find investinstruction.customer
-			PreparedStatement pstmt1 = openConnection().prepareStatement(sql1);
-			pstmt1.setString(1, fullName);
-			ResultSet rs1  = pstmt1.executeQuery();
-			boolean check =rs1.next();
-			if(check == false){
-				System.out.println("Please enter fullname that existed in table customer, such as:Carie Bowtel");
+			ResultSet rs = cstmt.executeQuery();
+			rs.next();
+			String tem = rs.getString(1);
+
+			System.out.println(tem);
+			if(tem.contains("null")){
+				System.out.println("Please enter the correct fullName or etfName");
 				return;
 			}
-			String customer = rs1.getString("login");
-			rs1.close();
-			pstmt1.close();
 
-
-			//find investinstruction.code
-			PreparedStatement pstmt2 = openConnection().prepareStatement(sql2);
-			pstmt2.setString(1, etfName);
-			ResultSet rs2  = pstmt2.executeQuery();
-			check = rs2.next();
-			if(check == false){
-				System.out.println("Please enter etfName that already existed in table etf, such as:Global Banks");
-				return;
-			}
-			String code = rs2.getString("code");
-
-
-
-
-
-
-			//insert a row of data into table investinstruction
-			PreparedStatement pstmt3 = openConnection().prepareStatement(sql3);
-			pstmt3.setFloat(1, amount2num);
-			pstmt3.setString(2, frequency);
-			pstmt3.setDate(3, date);
-			pstmt3.setString(4, customer);
-			pstmt3.setString(5, globalAdmName);
-			pstmt3.setString(6, code );
-			pstmt3.setString(7, notes );
-			pstmt3.setInt(8, instructionid );
-			pstmt3.executeUpdate();
-			pstmt3.close();
+			cstmt.close();
 			openConnection().close();
-
-
-			System.out.println("update successfully, instructionid of changed data is :" +instructionid);
 
 		} catch (SQLException e) {
 			throw new RuntimeException(e);
 		}
+
 
 	}
 
