@@ -132,7 +132,6 @@ begin
 
     select count(*) into res2 from etf where code = sp_code;
 
-
     res3 := res1 + res2;
 
 end
