@@ -111,13 +111,10 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 
 
-		String sql = "select DISTINCT instructionid,amount,frequency,expiryDate,customer,t.firstname,t.lastname,investinstruction.administrator,name,notes " +
-				"from  investinstruction,etf, " +
-				"(select login,firstname,lastname,investinstruction.administrator " +
-				"from customer,investinstruction where login = investinstruction.customer) t " +
-				"where investinstruction.administrator = (select login from administrator where firstname = '"+userName+"')  " +
-				"and investinstruction.code = etf.code and t.administrator = investinstruction.administrator " +
-				"and investinstruction.customer = t.login ORDER BY frequency,expiryDate ASC,t.firstname DESC,t.lastname DESC";
+		String sql = "select *,(case when t.expirydate <= CURRENT_DATE then 1 else 0 end)as mark\n" +
+				"from (select * from customer join investinstruction ON (investinstruction.customer = customer.login) join Etf\n" +
+				"      ON (etf.code = investinstruction.code) where investinstruction.administrator = '"+globalAdmName+"') t\n" +
+				"order by mark ASC, t.expirydate ASC, t.firstname DESC, t.lastname DESC;";
 
 
 
@@ -134,7 +131,17 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 				Instruction instruction = new Instruction();
 				instruction.setInstructionId(rs.getInt("instructionid"));
 				instruction.setAmount(rs.getString("amount"));
-				instruction.setFrequency(rs.getString("frequency"));
+
+				String Freq = rs.getString("frequency");
+				if("MTH".equals(Freq)){
+					Freq = "Monthly";
+				}
+				if("FTH".equals(Freq)){
+					Freq = "Fortnightly";
+				}
+
+				instruction.setFrequency(Freq);
+
 				String expirydate = rs.getString("expirydate");
 
 				//The date format in the database is YMD, which is first parsed to Data and then converted to DMY format
@@ -161,6 +168,8 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 				instruction.setAdministrator(rs.getString("administrator"));
 				instruction.setNotes(rs.getString("notes"));
 				instruction.setEtf(rs.getString("name")) ;
+
+
 				vector.add(instruction);
 			}
 			System.out.println("function (findInstructionsByAdm) executed successfully.");
@@ -183,7 +192,7 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 	@Override
 	public Vector<Instruction> findInstructionsByCriteria(String searchString) {
 		Vector <Instruction> vector =new Vector<>();
-		String sql = "select  instructionid,amount,frequency,expirydate,customer,administrator,t.code,t.fullname,t.name,investinstruction.notes\n" +
+		String sql = "select  distinct instructionid,amount,frequency,expirydate,customer,administrator,t.code,t.fullname,t.name,investinstruction.notes\n" +
 				"from investinstruction,\n" +
 				"   (select    concat_ws(' ',firstname,lastname) fullname, login , etf.code, etf.name , investinstruction.notes\n" +
 				"    from investinstruction,customer,etf\n" +
@@ -204,7 +213,15 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			while(rs.next()){
 				Instruction instruction = new Instruction();
 				instruction.setAmount(rs.getString("amount"));
-				instruction.setFrequency(rs.getString("frequency"));
+
+				String Freq = rs.getString("frequency");
+				if("MTH".equals(Freq)){
+					Freq = "Monthly";
+				}
+				if("FTH".equals(Freq)){
+					Freq = "Fortnightly";
+				}
+				instruction.setFrequency(Freq);
 				instruction.setExpiryDate(rs.getString("expirydate"));
 				instruction.setCustomer(rs.getString("fullname"));
 				instruction.setEtf(rs.getString("name"));
@@ -243,9 +260,15 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 		}
 		float amount2num= Float.parseFloat(amount);
 		String frequency = instruction.getFrequency();
-		if(!(frequency.equals("MTH")||frequency.equals("FTH"))){
-			System.out.println("Please enter correct frequency:MTH/FTH");
+		if(!("Monthly".equals(frequency)||"Fortnightly".equals(frequency))){
+			System.out.println("Please enter correct frequency:Monthly/Fortnightly");
 			return;
+		}
+		if("Monthly".equals(frequency)){
+			frequency = "MTH";
+		}
+		if("Fortnightly".equals(frequency)){
+			frequency = "FTH";
 		}
 
 
@@ -260,9 +283,9 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 
 
-		String fullName = instruction.getCustomer();
+		String login = instruction.getCustomer();
 		String administrator = instruction.getAdministrator();
-		String etfName = instruction.getEtf();
+		String etfCode = instruction.getEtf();
 		String notes = instruction.getNotes();
 
         //find the insert index
@@ -284,29 +307,18 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 			String sql2 = "select check_para(?,?);";
 			CallableStatement cstmt = openConnection().prepareCall(sql2);
-			cstmt.setString(1, fullName);
-			cstmt.setString(2, etfName);
+			cstmt.setString(1, login);
+			cstmt.setString(2, etfCode);
 
 			ResultSet rs = cstmt.executeQuery();
 			rs.next();
 			String tem = rs.getString(1);
-			int len = tem.length();
-			tem = tem.substring(1,len-1);
-			String[]  strs=tem.split(",");
-			if(strs.length==2){
-				if(strs[0].isEmpty()){
-					System.out.println("Please enter the correct fullName");
-					return;
-				}
-				if(strs[1].isEmpty()){
-					System.out.println("Please enter the correct eftName");
-					return;
-				}
-			}else{
-				System.out.println("Please enter the correct fullName or etfName");
+			System.out.println(tem);
+
+			if(!"2".equals(tem)){
+				System.out.println("Please enter the correct customerLogin or etfCode");
 				return;
 			}
-
 
 
 
@@ -316,22 +328,22 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			CallableStatement cstmt2 = openConnection().prepareCall(sql3);
 
 			//strs[0]= customer ,strs[1] = code
-			if(strs.length==2) {
+			cstmt2.setInt(1, instructionid);
+			cstmt2.setFloat(2, amount2num);
+			cstmt2.setString(3, frequency);
+			cstmt2.setDate(4, expirydate);
+			cstmt2.setString(5, login);
+			cstmt2.setString(6, etfCode);
+			cstmt2.setString(7, globalAdmName);
+			cstmt2.setString(8, notes);
+			cstmt2.execute();
+			cstmt2.close();
 
-				cstmt2.setInt(1, instructionid);
-				cstmt2.setFloat(2, amount2num);
-				cstmt2.setString(3, frequency);
-				cstmt2.setDate(4, expirydate);
-				cstmt2.setString(5, strs[0]);
-				cstmt2.setString(6, strs[1]);
-				cstmt2.setString(7, globalAdmName);
-				cstmt2.setString(8, notes);
-				cstmt2.execute();
-				cstmt2.close();
+			openConnection().close();
+			System.out.println("add successfully, instructionid of new data is :" +instructionid);
 
-				openConnection().close();
-				System.out.println("add successfully, instructionid of new data is :" +instructionid);
-			}
+
+
 
 
 
@@ -361,6 +373,18 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 
 		float amount2num = Float.parseFloat(amount);
 		String frequency = instruction.getFrequency();
+
+		if(!("Monthly".equals(frequency)||"Fortnightly".equals(frequency))){
+			System.out.println("Please enter correct frequency:Monthly/Fortnightly");
+			return;
+		}
+		if("Monthly".equals(frequency)){
+			frequency = "MTH";
+		}
+		if("Fortnightly".equals(frequency)){
+			frequency = "FTH";
+		}
+
 		String expirydate = instruction.getExpiryDate();
 
 		//check date format
@@ -379,9 +403,9 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 		java.sql.Date date = new java.sql.Date(d.getTime());
 
 
-		String fullName = instruction.getCustomer();
+		String login = instruction.getCustomer();
 		String administrator = instruction.getAdministrator();
-		String etfName = instruction.getEtf();
+		String etfCode = instruction.getEtf();
 		String notes = instruction.getNotes();
 
 
@@ -390,34 +414,26 @@ public class PostgresRepositoryProvider implements IRepositoryProvider {
 			CallableStatement cstmt = openConnection().prepareCall(sql1);
 
 
-			cstmt.setString(1, fullName);
-			cstmt.setString(2, etfName);
+			cstmt.setString(1, login);
+			cstmt.setString(2, etfCode);
+
 
 			ResultSet rs = cstmt.executeQuery();
 			rs.next();
 			String tem = rs.getString(1);
-			int len = tem.length();
-			tem = tem.substring(1,len-1);
-			String[]  strs=tem.split(",");
 
-
-			if(strs.length==2){
-				if(strs[0].isEmpty()){
-					System.out.println("Please enter the correct fullName");
-					return;
-				}
-				if(strs[1].isEmpty()){
-					System.out.println("Please enter the correct eftName");
-					return;
-				}
+			if(!"2".equals(tem)){
+				System.out.println("Please enter the correct customerLogin or etfCode");
+				return;
 			}
+
 
 			cstmt.close();
 
 			String sql2 = "select update_instruction(?,?,?,?,?,?,?,?);";
 			CallableStatement cstmt2 = openConnection().prepareCall(sql2);
-			cstmt2.setString(1, strs[0]);
-			cstmt2.setString(2, strs[1]);
+			cstmt2.setString(1, login);
+			cstmt2.setString(2, etfCode);
 			cstmt2.setFloat(3,amount2num);
 			cstmt2.setString(4,frequency);
 			cstmt2.setDate(5,date);

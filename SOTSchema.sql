@@ -122,18 +122,19 @@ INSERT INTO InvestInstruction (Amount, Frequency, ExpiryDate, Customer, Administ
 
 
 DROP FUNCTION if exists check_para;
-create or replace function check_para(sp_fullname  varchar,eft_name varchar, out sp_customer VARCHAR,out eft_code VARCHAR)
-    AS  $$
-
+create or replace function check_para(sp_login  varchar,sp_code varchar,out res3 INTEGER)  AS  $$
+declare
+    res1 INTEGER;
+    res2 INTEGER;
 begin
 
-    select login  into sp_customer from
-        (select distinct  login,fullname from (select concat_ws(' ',firstname,lastname) fullname, login from customer) t,investinstruction where t.login = investinstruction.customer) t2
-    where fullname = sp_fullname;
+    select count(*)  into  res1 from customer where Login = sp_login;
 
+    select count(*) into res2 from etf where code = sp_code;
 
-    --find etf.code from etf.name
-    select coalesce(code, 'null') into eft_code from etf where name = eft_name;
+    select
+
+    res3 := res1 + res2;
 
 end
 $$
@@ -143,7 +144,7 @@ $$
 
 
 DROP FUNCTION if exists add_instruction;
-create  OR REPLACE function add_instruction(sp_id int,sp_amount float,sp_frequncy varchar,sp_date date,sp_customer varchar,eft_code varchar,sp_adm varchar,sp_notes varchar )
+create  OR REPLACE function add_instruction(sp_id int,sp_amount float,sp_frequncy varchar,sp_date date,sp_customer varchar,etf_code varchar,sp_adm varchar,sp_notes varchar )
     RETURNS integer
 AS  $$
 DECLARE
@@ -151,7 +152,7 @@ DECLARE
 begin
     --add data
     INSERT INTO investinstruction (instructionid, amount, frequency, expirydate, customer,administrator,code,notes)
-        VALUES (sp_id,sp_amount,sp_frequncy,sp_date,sp_customer,sp_adm,eft_code,sp_notes);
+        VALUES (sp_id,sp_amount,sp_frequncy,sp_date,sp_customer,sp_adm,etf_code,sp_notes);
 
     return 1;
 
@@ -162,7 +163,7 @@ $$
 
 
 DROP FUNCTION if exists update_instruction;
-create  OR REPLACE function update_instruction(sp_customer varchar,eft_code varchar,sp_amount float,sp_frequncy varchar,sp_date date,sp_adm varchar,sp_notes varchar , sp_id int)
+create  OR REPLACE function update_instruction(sp_customer varchar,etf_code varchar,sp_amount float,sp_frequncy varchar,sp_date date,sp_adm varchar,sp_notes varchar , sp_id int)
     RETURNS integer
     AS  $$
 DECLARE
@@ -170,7 +171,7 @@ DECLARE
 begin
     --update data
     UPDATE investinstruction
-        SET amount = sp_amount, frequency = sp_frequncy,expirydate=sp_date,customer=sp_customer,administrator=sp_adm,code=eft_code,notes=sp_notes
+        SET amount = sp_amount, frequency = sp_frequncy,expirydate=sp_date,customer=sp_customer,administrator=sp_adm,code=etf_code,notes=sp_notes
         WHERE instructionid = sp_id;
 
     return 1;
